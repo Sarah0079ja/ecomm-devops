@@ -1,0 +1,54 @@
+version: '3.8'
+
+name: ecommerce-toystore
+
+services:
+  postgres:
+    container_name: postgres-db
+    image: postgres:15.1-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=supersmall
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - toystore-network
+    restart: unless-stopped
+
+  ecommerce-backend:
+    container_name: ecommerce-backend
+    build:
+      context: ./ecommerce-backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    networks:
+      - toystore-network
+    restart: unless-stopped
+
+  ecommerce-frontend:
+    container_name: ecommerce-frontend
+    build:
+      context: ./ecommerce-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - ecommerce-backend
+    networks:
+      - toystore-network
+    restart: unless-stopped
+
+networks:
+  toystore-network:
+    driver: bridge
+
+volumes:
+  pgdata:

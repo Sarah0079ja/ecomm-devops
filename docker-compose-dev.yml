@@ -1,0 +1,80 @@
+version: "3.8"
+
+name: ecommerce-toystore-dev
+
+services:
+  ecommerce-frontend-vite:
+    image: ecommerce-frontend-vite
+    build:
+      context: /ecommerce-frontend
+      dockerfile: /ecommerce-frontend/Dockerfile.3
+    init: true
+    volumes:
+      - type: bind
+        source: /ecommerce-frontend
+        target: /usr/src/app/
+      - type: volume
+        target: /usr/src/app/node_modules 
+      - type: bind
+        source: /ecommerce-frontend/vite.config.js
+        target: /usr/src/app/vite.config.js
+    networks:
+      - toystore-network
+    ports:
+      - 5173:5173
+    depends_on:
+      - ecommerce-backend
+
+  ecommerce-frontend:
+    image: ecommerce-frontend
+    build:
+      context:  ./ecommerce-frontend
+      dockerfile: ./ecommerce-frontend/Dockerfile
+    init: true
+    networks:
+      - toystore-network
+    ports:
+      - 80:8080
+    restart: unless-stopped
+
+  ecommerce-backend:
+    image: ecommerce-backend
+    build:
+      context: ./ecommerce-backend
+      dockerfile: ./ecommerce-backend/Dockerfile
+      target: dev
+    init: true
+    volumes:
+      - type: bind
+        source: ./ecommerce-backend
+        target: /usr/src/app/
+      - type: volume
+        target: /usr/src/app/node_modules 
+    depends_on:
+      - postgres-db
+    environment:
+      - DATABASE_URL=postgres://postgres:supersmall@postgres-db:5432/postgres
+    networks:
+      - toystore-network 
+    ports:
+      - 3001:3001
+    restart: unless-stopped
+  
+  postgres-db:
+    image: postgres:15.1-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=supersmall
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+    networks:
+      - toystore-network
+    ports:
+      - 5432:5432
+   
+
+volumes:
+  pgdata:
+networks:
+  toystore-network:
