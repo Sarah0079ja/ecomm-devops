@@ -27,7 +27,7 @@ USER node
 
 # copy remaining source code AFTER installing dependencies. 
 # Again, copy only the necessary files
-COPY --chown=node:node . 
+COPY --chown=node:node . .
 
 EXPOSE 3000
 
