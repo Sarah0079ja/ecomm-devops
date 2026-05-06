@@ -86,7 +86,7 @@ jobs:
         with:
           context: ./ecommerce-frontend
           push: true
-          tags: ${{ vars.DOCKERHUB_USERNAME }}/ecommerce-frontend:latest
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/ecommerce-frontend:v1.0.0
     
   build-and-push-backend:
     runs-on: ubuntu-latest
