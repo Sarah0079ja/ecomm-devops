@@ -16,11 +16,11 @@ jobs:
     - name: Install frontend dependencies
       run: cd ecommerce-frontend && npm install
     - name: Run frontend tests
-      run: cd ecommerce-frontend && npm test -- --run
+      run: cd ecommerce-frontend && npm test 
     - name: Install backend dependencies
       run: cd ecommerce-backend && npm install
     - name: Run backend tests
-      run: cd ecommerce-backend && npm test -- --run
+      run: cd ecommerce-backend && npm test 
 
 
   security-check:

@@ -8,6 +8,7 @@
     "debug-docker": "node --inspect=0.0.0.0:9229 server.js",
     "debug": "node --inspect server.js",
     "test": "jest"
+    
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
