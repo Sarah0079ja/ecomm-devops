@@ -10,7 +10,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:supersmall@postgres-db:5432/postgres'
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = process.env.JWT_SECRET || 'vwxyz';
 
 app.use(cors());
 app.use(express.json());
@@ -34,15 +34,16 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     const result = await pool.query(
-      'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email',
-      [email, hashedPassword]
+      "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email",
+      [email, hashedPassword],
     );
-    
+
     const token = jwt.sign({ id: result.rows[0].id, email }, JWT_SECRET);
     res.json({ token, user: result.rows[0] });
   } catch (err) {
+    console.error("Register error:", err.message);
     res.status(400).json({ error: err.message });
   }
 });
