@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = "http://ecommerce-backend-svc:3001/api";;
 
 // Auth context
 const AuthContext = createContext();
