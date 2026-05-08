@@ -171,7 +171,7 @@ jobs:
 
         with:
           scan-type: image
-          image-ref: ecommerce-backend:latest
+          image-ref: vintage007/ecommerce-backend:latest
           format: json
           output: trivy-report.json
           exit-code: '0'
@@ -183,7 +183,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
-          image-ref: ecommerce-frontend:latest
+          image-ref: vintage007/ecommerce-frontend:latest
           format: json
           output: trivy-report.json
           exit-code: '0'
