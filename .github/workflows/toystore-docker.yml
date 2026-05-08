@@ -22,9 +22,27 @@ jobs:
       run: cd ecommerce-backend && npm test 
 
 
-  security-check:
+  Gitleaks-setup:
     runs-on: ubuntu-latest
     needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 
+        
+      - name: Install GitLeaks
+      - uses: gitleaks/gitleaks-action@v2
+
+      - name: Gitleaks Code Scan
+        run: |
+            gitleaks detect --source ./ecommerce-frontend --exit-code 1
+            gitleaks detect --source ./ecommerce-backend --exit-code 1
+
+
+
+  trivy_fs_scan:
+    runs-on: ubuntu-latest
+    needs:  Gitleaks-setup
 
     steps:
     - uses: actions/checkout@v4
@@ -39,34 +57,60 @@ jobs:
     - name: Trivy FS Scan
       run: trivy fs --format table -o fs-report.json .
       
-    - name: Gitleaks Installation
-      run: sudo apt install gitleaks -y
-      
-    - name: Gitleaks Code Scan
-      run: gitleaks detect source . -r gitleaks-report.json -f json
+   
+     
+  
 
-
-
-  # sonarqube:
-  #   runs-on: ubuntu-latest
+  # sonarqube-frontend:
+  #   runs-on: ubuntu-latest(... or frontend ec2 instance)
+  #   needs: Trivy FS Scan
   #   steps:
-  #   - uses: actions/checkout@v6
-  #     with:
-  #       # Disabling shallow clones is recommended for improving the relevancy of reporting
-  #       fetch-depth: 0
-  #   - name: SonarQube Scan
-  #     uses: SonarSource/sonarqube-scan-action@v8.0.0.0 # Ex: v4.1.0 or sha1, See the latest version at https://github.com/marketplace/actions/official-sonarqube-scan
-  #     env:
-  #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }
-        
-    # - name: SonarQube Quality Gate check
-    #   id: sonarqube-quality-gate-check
-    #   uses: sonarsource/sonarqube-quality-gate-action@master
-    #   with:
-    #     pollingTimeoutSec: 600
-    #   env:
-    #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} #OPTIONAL
+  #     - name: checkout code
+  #     - uses: actions/checkout@v6
+       
+  #     - name: sonarQube-ecommerce-frontend
+  #       uses: SonarSource/sonarqube-scan-action@v8.0.0.0
+  #       with:
+  #         context: ./ecommerce-frontend
+  #         args:
+  #             -Dsonar-projectKey=ecommerce-frontend
+  #             -Dsonar-projectName=ecommerce-frontend
+  #             -Dsonar.sources=.
+  #             -Dsonar.exclusions=**/node_modules/**, **/dist/**,**/build/**
+  #       env:
+  #          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }
+  #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+     # sonarqube-backend:
+    #   runs-on: ubuntu-latest (... or backend ec2 instance)
+    #   needs: sonarqube-frontend
+
+    #   steps:
+    #     - name: checkout code
+    #       uses: actions/checkout@v6
+
+    #     - name: sonarQube-ecommerce-backend
+    #       uses: SonarSource/sonarqube-scan-action@v8.0.0.0
+      #     with:
+    #         context: ./ecommerce-backend
+    #         args:
+    #             -Dsonar-projectKey=ecommerce-backend
+    #             -Dsonar-projectName=ecommerce-backend
+    #             -Dsonar.sources=.
+    #             -Dsonar.exclusions=**/node_modules/**, **/dist/**,**/build/**
+    #       env:
+    #          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }
+    #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+       
+      #   - name: SonarQube Quality Gate check
+      #     id: sonarqube-quality-gate-check
+      #     uses: sonarsource/sonarqube-quality-gate-action@master
+      #     with:
+      #       pollingTimeoutSec: 600
+      #     env:
+      #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} #OPTIONAL 
 
   
   build-and-push-frontend:
@@ -113,26 +157,101 @@ jobs:
           context: ./ecommerce-backend
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/ecommerce-backend:latest
-          
-  deploy:
+ 
+  trivy_image_scan:
     runs-on: ubuntu-latest
-    needs: [build-and-push-frontend, build-and-push-backend]
+    needs:   [build-and-push-frontend, build-and-push-backend]
     
     steps:
-    - uses: actions/checkout@v4
-    - name: Deploy to EC2
-      env:
-        SSH_KEY: ${{ secrets.SSH_KEY }}
-        EC2_IP: ${{ secrets.EC2_IP }}
-      run: |
-        mkdir -p ~/.ssh
-        echo "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@$EC2_IP "cd ecomm-devops && git pull && docker-compose pull && docker-compose up -d"
+      - name: Checkout code
+        Uses: actions/checkout@v4
+      
+      - name: Run Trivy image scan for ecommerce-backend 
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ecommerce-backend:latest
+          format: json
+          output: trivy-report.json
+          exit-code: '0'
+          ignore-unfixed: true 
+          vuln-type: os, library 
+          severity: CRITICAL,HIGH 
+
+      - name: Run Trivy image scan for ecommerce-frontend 
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ecommerce-frontend:latest
+          format: json
+          output: trivy-report.json
+          exit-code: '0'
+          ignore-unfixed: true 
+          vuln-type: os, library 
+          severity: CRITICAL,HIGH 
+                    
+
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   needs: trivy_image_scan
+    
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Deploy to EC2
+  #     env:
+  #       SSH_KEY: ${{ secrets.SSH_KEY }}
+  #       EC2_IP: ${{ secrets.EC2_IP }}
+  #     run: |
+  #       mkdir -p ~/.ssh
+  #       echo "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+  #       chmod 600 ~/.ssh/id_rsa
+  #       ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@$EC2_IP "cd ecomm-devops && git pull && docker-compose pull && docker-compose up -d"
 
 
+  # deploy to kubernetes:
+  #   runs-on: Agent-1
+  #   needs: trivy_image_scan 
 
+  #   steps:
+  #     - name: Checkout code
+  #     - uses: actions/checkout@v4
 
+  #     - name : Install AWS Cli 
+  #       run: |
+  #         curl "https://awscl1.amazonaws.com/awscli-exe-linux-x86_64.zip"-0 "awscliv2.zip"
+  #         unzip awscliv2.zip
+  #         sudo ./aws/install --update
+  #         --update credentials
+
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v2
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: eu-west-3
+
+  #     - name: Setup kubectl
+  #       uses: azure/setup-kubectl@v1
+  #       with:
+  #         kubectl-version: 1.20.0
+
+  #     - name: configure kubeconfig
+  #       run: |
+  #           mkdir -p $HOME/.kube
+  #           echo "$(( secrets. EKS_KUBECONFIG ))" > $HOME/.kube/config 
+
+  #     - name: Deploy to EKS
+  #       run: |
+  #         kubectl apply -f k8s-prod/sc.yaml
+  #         kubectl apply -f k8s-prod/server.yaml
+  #         kubectl apply -f k8s-prod/ecommercebackend.yaml
+  #         kubectl apply -f k8s-prod/ecommerce-frontend.yaml
+  #         kubectl
+  #         -f k8s-prod/frontend. yaml
+  #         -f k8s-prod/ci. yaml
+
+# Notes: Ensure you add the kubconfig file as a secret in your GitHub repository and reference it correctly in the workflow.
+#  The kubeconfig file should contain the necessary credentials and cluster information to allow kubectl to connect to your EKS cluster.
    
     
  
