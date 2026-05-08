@@ -164,7 +164,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        Uses: actions/checkout@v4
+        uses: actions/checkout@v4
       
       - name: Run Trivy image scan for ecommerce-backend 
         uses: aquasecurity/trivy-action@0.28.0
