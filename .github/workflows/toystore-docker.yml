@@ -176,7 +176,7 @@ jobs:
           output: trivy-report.json
           exit-code: '0'
           ignore-unfixed: true 
-          vuln-type: "os, library" 
+          vuln-type: 'os,library'
           severity: CRITICAL,HIGH 
 
       - name: Run Trivy image scan for ecommerce-frontend 
@@ -188,7 +188,7 @@ jobs:
           output: trivy-report.json
           exit-code: '0'
           ignore-unfixed: true 
-          vuln-type: "os, library" 
+          vuln-type: 'os,library'
           severity: CRITICAL,HIGH 
                     
 
