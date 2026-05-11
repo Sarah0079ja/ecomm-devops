@@ -1,142 +1,269 @@
-# Ecommerce App - Complete Setup
+# Toystore E-Commerce DevOps Project
+
+## Overview
+
+Toystore is a production-grade e-commerce platform demonstrating end-to-end DevOps practices. This project showcases containerization, infrastructure automation, continuous integration/deployment, and Kubernetes orchestration.
+
+## Tech Stack
+
+**Frontend**
+- React 18 with Vite
+- Nginx (containerized)
+- Docker multi-stage builds
+
+**Backend**
+- Node.js 20
+- Express.js API
+- JWT authentication with bcrypt
+
+**Database**
+- PostgreSQL 15
+- Persistent volume in Kubernetes
+
+**DevOps & Infrastructure**
+- Docker & Docker Compose
+- Kubernetes (EKS / Minikube)
+- Terraform (infrastructure as code)
+- GitHub Actions (CI/CD)
+- Docker Hub (container registry)
+- Trivy (vulnerability scanning)
+- Gitleaks (secret scanning)
+
+**Cloud**
+- AWS (eu-west-3)
+- EKS, VPC, EC2, CloudWatch
+
+## Architecture
+
+```
+GitHub Push
+    ↓
+GitHub Actions CI/CD Pipeline
+├─ Test (Jest, Vitest)
+├─ Security Scan (Trivy, Gitleaks)
+├─ Build Docker Images
+├─ Push to Docker Hub
+└─ Deploy to Kubernetes
+    ↓
+Kubernetes Cluster
+├─ Frontend Pod (3 replicas)
+├─ Backend Pod (2 replicas)
+└─ PostgreSQL Pod (1 replica)
+```
+
+## Features
+
+✅ **High Availability** - Multi-pod deployments with auto-healing  
+✅ **Security** - Image scanning, secret detection, least-privilege access  
+✅ **Scalability** - Horizontal pod replication, stateless design  
+✅ **Automation** - Full CI/CD pipeline with GitHub Actions  
+✅ **Infrastructure as Code** - Terraform for reproducible deployments  
+✅ **Observability** - Kubernetes logs and CloudWatch integration  
+
+## CI/CD Pipeline
+
+The automated deployment pipeline has 5 stages:
+
+### 1. Test
+- Runs Jest tests (backend)
+- Runs Vitest tests (frontend)
+- Fails if tests don't pass
+
+### 2. Security Scan
+- Trivy filesystem scan for vulnerabilities
+- Gitleaks scan for hardcoded secrets
+- Blocks deployment if issues found
+
+### 3. Build & Push
+- Builds Docker images for frontend and backend
+- Pushes images to Docker Hub with `latest` tag
+- Uses BuildKit cache for faster builds
+
+### 4. Image Scan
+- Trivy scans built images for CVEs
+- Reports critical and high-severity issues
+
+### 5. Deploy
+- Updates kubeconfig for EKS cluster
+- Applies Kubernetes manifests
+- Restarts pods to pull new images
+
+## Deployment Flow
+
+```
+1. Developer pushes code to main branch
+                ↓
+2. GitHub Actions triggered automatically
+                ↓
+3. Test → Security Scan → Build → Push → Deploy
+                ↓
+4. Kubernetes pulls images and restarts pods
+                ↓
+5. Services route traffic to new replicas
+                ↓
+6. App live on production ✓
+```
+
+## Local Development
+
+### Start all services with Docker Compose
+```bash
+docker-compose up -d
+```
+
+- Frontend: http://localhost:8080
+- Backend: http://localhost:3001
+- Database: localhost:5432
+
+### Run tests
+```bash
+# Frontend
+cd ecommerce-frontend && npm test
+
+# Backend
+cd ecommerce-backend && npm test
+```
+
+## Kubernetes Deployment
+
+### Local (Minikube)
+```bash
+# Start minikube
+minikube start
+
+# Deploy
+kubectl apply -f k8s-prod/postgres.yaml
+kubectl apply -f k8s-prod/ecommerce-backend.yaml
+kubectl apply -f k8s-prod/ecommerce-frontend.yaml
+kubectl apply -f k8s-prod/ingress.yaml
+
+# Check status
+kubectl get pods -n prod
+```
+
+### Cloud (AWS EKS)
+```bash
+# Initialize Terraform
+cd terraform
+terraform init
+
+# Plan infrastructure
+terraform plan
+
+# Deploy
+terraform apply
+
+# Configure kubectl
+aws eks update-kubeconfig --name ecommerce-cluster --region eu-west-3
+
+# Deploy apps
+kubectl apply -f k8s-prod/
+```
 
 ## Project Structure
+
 ```
-ecommerce-app/
-├── backend/
+Toy store/
+├── ecommerce-frontend/          # React app with Vite
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   ├── src/
+│   └── package.json
+├── ecommerce-backend/           # Node.js API
+│   ├── Dockerfile
 │   ├── server.js
-│   ├── package.json
-│   ├── .env
-│   └── database.sql
-└── frontend/
-    ├── package.json
-    ├── src/
-    │   ├── App.js
-    │   ├── App.css
-    │   └── index.js
-    └── public/
-        └── index.html
+│   └── package.json
+├── k8s-prod/                    # Kubernetes manifests
+│   ├── postgres.yaml
+│   ├── ecommerce-backend.yaml
+│   ├── ecommerce-frontend.yaml
+│   └── ingress.yaml
+├── terraform/                   # Infrastructure as Code
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── terraform.tfvars
+│   └── modules/
+│       ├── vpc/
+│       ├── iam/
+│       └── eks/
+├── .github/workflows/           # CI/CD pipeline
+│   └── toystore-docker.yml
+└── docker-compose.yml
 ```
 
-## Step 1: Database Setup
+## Key Learnings
 
-**Requirements:** PostgreSQL installed locally
+This project demonstrates:
 
-1. Create the database:
-   ```bash
-   createdb ecommerce
-   ```
+- **Containerization** with Docker multi-stage builds
+- **Orchestration** with Kubernetes (services, deployments, ingress)
+- **Infrastructure as Code** with Terraform modules
+- **CI/CD Automation** with GitHub Actions
+- **Security** through image scanning and secret detection
+- **Scalability** with horizontal pod replication
+- **Reliability** with self-healing and health checks
 
-2. Load the schema:
-   ```bash
-   psql ecommerce < backend/database.sql
-   ```
+## Database Schema
 
-3. Verify:
-   ```bash
-   psql ecommerce
-   ```
-   Then in the psql prompt:
-   ```sql
-   \dt  -- should show 4 tables: users, products, orders, order_items
-   SELECT * FROM products;  -- should show 5 products
-   ```
+**Users Table**
+- id (primary key)
+- email (unique)
+- password_hash
+- created_at
 
-## Step 2: Backend Setup
+**Products Table**
+- id (primary key)
+- name
+- price
+- created_at
 
-1. Open a terminal in the `backend/` folder:
-   ```bash
-   cd backend
-   ```
+**Orders Table**
+- id (primary key)
+- user_id (foreign key)
+- total
+- created_at
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+**Order Items Table**
+- id (primary key)
+- order_id (foreign key)
+- product_id (foreign key)
+- quantity
+- price_at_purchase
 
-3. Start the server:
-   ```bash
-   npm start
-   ```
+## API Endpoints
 
-   You should see:
-   ```
-   Server running on http://localhost:3001
-   ```
+### Authentication
+- `POST /api/auth/register` - Create new user
+- `POST /api/auth/login` - Login and get JWT token
 
-**Leave this terminal running.**
+### Products
+- `GET /api/products` - List all products
 
-## Step 3: Frontend Setup
+### Orders
+- `POST /api/orders` - Create order (requires auth)
+- `GET /api/orders` - Get user's order history (requires auth)
 
-1. Open a **new terminal** in the `frontend/` folder:
-   ```bash
-   cd frontend
-   ```
+## Future Enhancements
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+- **Monitoring** - Prometheus + Grafana for metrics
+- **RDS** - Replace PostgreSQL pod with AWS RDS
+- **Auto-scaling** - HPA based on CPU/memory
+- **GitOps** - ArgoCD for declarative deployments
+- **Backup** - Velero for disaster recovery
+- **Multi-region** - Deploy to multiple AWS regions
 
-3. Start the React app:
-   ```bash
-   npm start
-   ```
+## Getting Started
 
-   The app should automatically open at `http://localhost:3000`
+1. Clone this repo
+2. Install Docker and Kubernetes tools
+3. Run `docker-compose up` locally
+4. Or deploy to Kubernetes with manifests in `k8s-prod/`
+5. Or use Terraform to provision AWS infrastructure
 
-## What You Can Do
+## Author
 
-1. **Register**: Create a new account with email/password
-2. **Browse**: See 5 products (Laptop, Mouse, Cable, Stand, Keyboard)
-3. **Add to Cart**: Click "Add to Cart" on any product
-4. **Checkout**: Enter quantities and click "Checkout"
-5. **Order History**: Click "Orders" tab to see your past orders
+DevOps Engineer | Cloud Infrastructure | Kubernetes | Terraform | CI/CD
 
-## Test Account (Optional)
+---
 
-If you want to skip registration, the database includes nothing pre-made. Just register a new account.
-
-## Troubleshooting
-
-**Error: "database does not exist"**
-- Run `createdb ecommerce` first
-- Make sure you're in the right directory when running `psql ecommerce < backend/database.sql`
-
-**Error: "ECONNREFUSED 127.0.0.1:3001"**
-- Backend server isn't running
-- Make sure you ran `npm start` in the backend folder and it says "Server running"
-
-**Error: "CORS error"**
-- Backend is on localhost:3001, frontend on localhost:3000
-- The server.js already has CORS enabled, so this shouldn't happen
-- Check that backend is running
-
-**Error: "Invalid token" when checking orders**
-- Try logging out and back in
-- If it persists, the database connection might be broken
-
-**Frontend won't load**
-- Make sure you're in the frontend folder before `npm start`
-- Try `npm install` again if dependencies are missing
-
-## What To Study For Interviews
-
-1. **JWT tokens** - Look at how login creates a token and how it's sent with requests
-2. **Password hashing** - See bcrypt in the register endpoint
-3. **Database transactions** - See the checkout endpoint (BEGIN/COMMIT/ROLLBACK)
-4. **Protected routes** - See authMiddleware in the backend
-5. **React Context** - How the auth state flows through the app
-6. **CORS** - Why frontend and backend need it on different ports
-
-## Extensions (Pick ONE if you want)
-
-- Add inventory checking (prevent buying more than in stock)
-- Add product detail page with images
-- Add "remove from cart" button
-- Add order status tracking (pending, shipped, delivered)
-- Add email validation on registration
-- Add password strength requirements
-- Add admin page to add/edit products
-
-Don't do all of them. One thing, done well, is better than five things halfway.
+This project is a complete demonstration of modern DevOps practices suitable for production deployment.
